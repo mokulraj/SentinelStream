@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+<<<<<<< HEAD
 from app.api.routes_auth import router as auth_router
 from app.api.routes_transactions import router as tx_router
 from app.db.session import engine
@@ -23,3 +24,11 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+=======
+
+app = FastAPI(title="SentinelStream")
+
+@app.get("/")
+def root():
+    return {"message": "SentinelStream API Running"}
+>>>>>>> 9038bf346d05a88bc7b02e1d5d78ba7d2ab126e0
