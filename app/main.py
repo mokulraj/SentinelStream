@@ -1,11 +1,10 @@
 from fastapi import FastAPI
+import uvicorn
 
-from app.api.routes_auth import router as auth_router
+from app.api.routes.auth import router as auth_router
 from app.api.routes_transactions import router as tx_router
 from app.db.session import engine
 from app.db.base import Base
-from app.models.user import User
-from app.models.transaction import Transaction
 
 app = FastAPI(title="SentinelStream")
 
@@ -16,8 +15,9 @@ async def create_tables():
         await conn.run_sync(Base.metadata.create_all)
 
 
-app.include_router(auth_router)
-app.include_router(tx_router)
+# ✅ Routers
+app.include_router(auth_router)        # /auth/*
+app.include_router(tx_router)          # /transactions/* (or whatever prefix inside)
 
 
 @app.get("/")
@@ -28,3 +28,12 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "app.main:app",
+        host="127.0.0.1",
+        port=8000,
+        reload=True
+    )
