@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # from fastapi import FastAPI
 # from contextlib import asynccontextmanager
 
@@ -68,9 +69,49 @@ app.include_router(tx_router)
 
 @app.get("/")
 async def root():
+=======
+from fastapi import FastAPI
+import uvicorn
+
+from app.api.routes.auth import router as auth_router
+from app.api.routes_transactions import router as tx_router
+from app.db.session import engine
+from app.db.base import Base
+
+app = FastAPI(title="SentinelStream")
+
+
+@app.on_event("startup")
+async def create_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
+# ✅ Routers
+app.include_router(auth_router)        # /auth/*
+app.include_router(tx_router)          # /transactions/* (or whatever prefix inside)
+
+
+@app.get("/")
+def root():
+>>>>>>> 6cc52ffcbaf4b67a21040345c8d5e46f7ffcdf13
     return {"message": "SentinelStream API Running"}
 
 
 @app.get("/health")
+<<<<<<< HEAD
 async def health():
     return {"status": "ok"}
+=======
+def health():
+    return {"status": "ok"}
+
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "app.main:app",
+        host="127.0.0.1",
+        port=8000,
+        reload=True
+    )
+>>>>>>> 6cc52ffcbaf4b67a21040345c8d5e46f7ffcdf13
