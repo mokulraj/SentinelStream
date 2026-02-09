@@ -1,46 +1,54 @@
-from fastapi import APIRouter, Depends
+# app/api/routes/transactions.py
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from typing import List
 
 from app.db.session import get_db
-from app.core.deps import get_current_user
-from app.models.transaction import Transaction
+from app.db.models.transaction import Transaction
 from app.schemas.transaction import TransactionCreate, TransactionResponse
-
-from app.fraud.rule_engine import rule_based_fraud
-from app.fraud.ml_engine import ml_risk_score
-from app.fraud.decision_engine import final_decision
+from app.api.routes.auth import get_current_user
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
+# ----------------------------
+# List all transactions for current user
+# ----------------------------
+@router.get("/", response_model=List[TransactionResponse])
+async def list_transactions(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Transaction).where(Transaction.user_id == current_user.id))
+    transactions = result.scalars().all()
+    return transactions
 
-@router.post("/", response_model=TransactionResponse)
+# ----------------------------
+# Create a transaction
+# ----------------------------
+@router.post("/", response_model=TransactionResponse, status_code=201)
 async def create_transaction(
     payload: TransactionCreate,
-    db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_current_user),
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
-    user_home_location = "India"  # mocked profile (Redis later)
+    # ⚠️ IMPORTANT: your model uses 'type', but Pydantic should match it safely
+    # We'll remove 'type' from TransactionCreate to avoid SQLAlchemy keyword conflict
 
-    rule_result = rule_based_fraud(
-        payload.amount,
-        payload.location,
-        user_home_location
-    )
-
-    ml_score = ml_risk_score(payload.amount)
-    status = final_decision(rule_result, ml_score)
-
-    txn = Transaction(
-        user_id=user_id,
+    new_tx = Transaction(
+        user_id=current_user.id,
         amount=payload.amount,
         location=payload.location,
-        merchant=payload.merchant,
-        risk_score=ml_score,
-        status=status
+        status="success",
+        risk_score=0.0  # default, you can integrate your fraud scoring later
     )
 
-    db.add(txn)
-    await db.commit()
-    await db.refresh(txn)
+    db.add(new_tx)
+    try:
+        await db.commit()
+        await db.refresh(new_tx)
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
-    return txn
+    return new_tx
