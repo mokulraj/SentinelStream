@@ -1,7 +1,6 @@
-# app/db/models/transaction.py
 from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey
-from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from app.db.base import Base
 
 class Transaction(Base):
@@ -10,12 +9,14 @@ class Transaction(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     amount = Column(Float, nullable=False)
-    transaction_type = Column(String, nullable=False, default="purchase")  # renamed to match schema
+    transaction_type = Column(String, nullable=False)
     location = Column(String, nullable=True)
     merchant = Column(String, nullable=True)
-    risk_score = Column(Float, nullable=True)
-    status = Column(String, nullable=False, default="success")
+    risk_score = Column(Float, default=0.0)
+    status = Column(String, default="success")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relationship back to User
     user = relationship("User", back_populates="transactions")
+
+    def __repr__(self):
+        return f"<Transaction(id={self.id}, user_id={self.user_id}, amount={self.amount})>"

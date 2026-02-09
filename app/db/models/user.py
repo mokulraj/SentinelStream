@@ -1,4 +1,3 @@
-# app/db/models/user.py
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
 from app.db.base import Base
@@ -10,5 +9,11 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
 
-    # One-to-many relationship with Transaction
-    transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
+    transactions = relationship(
+        "Transaction",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    def __repr__(self):
+        return f"<User(id={self.id}, email={self.email})>"

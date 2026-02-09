@@ -1,38 +1,22 @@
-# app/schemas/transaction.py
-
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
 
-# ------------------------------
-# Request Schema for Creating Transaction
-# ------------------------------
 class TransactionCreate(BaseModel):
-    amount: float = Field(..., gt=0, description="Transaction amount must be greater than 0")
-    transaction_type: Optional[str] = Field(default="purchase", description="Type of transaction")
-    location: Optional[str] = Field(None, description="Transaction location")
-    merchant: Optional[str] = Field(None, description="Merchant name")
+    amount: float
+    transaction_type: str
+    location: str | None = None
+    merchant: str | None = None
 
-# ------------------------------
-# Response Schema for Transaction
-# ------------------------------
 class TransactionResponse(BaseModel):
     id: int
     user_id: int
     amount: float
     transaction_type: str
-    location: Optional[str]
-    merchant: Optional[str]
+    location: str | None
+    merchant: str | None
     status: str
-    risk_score: Optional[float]
+    risk_score: float
     created_at: datetime
 
     class Config:
-        from_attributes = True  # Pydantic v2 replacement for orm_mode
-
-# ------------------------------
-# Response after creating a transaction
-# ------------------------------
-class TransactionCreateResponse(BaseModel):
-    message: str
-    transaction: TransactionResponse
+        from_attributes = True

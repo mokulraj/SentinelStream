@@ -19,7 +19,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="SentinelStream",
-    lifespan=lifespan
+    lifespan=lifespan,
+    swagger_ui_init_oauth={
+        "usePkceWithAuthorizationCodeGrant": False
+    }
 )
 
 # Routers
