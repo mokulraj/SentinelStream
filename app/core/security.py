@@ -12,8 +12,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # Using bcrypt for password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-BCRYPT_MAX_LENGTH = 72
-
+BCRYPT_MAX_LENGTH = 72  # bcrypt max password length in bytes
 
 # --------------------------
 # Password hashing
@@ -22,16 +21,16 @@ def hash_password(password: str) -> str:
     """
     Safely hash password for bcrypt, truncating at 72 bytes.
     """
-    truncated = password.encode("utf-8")[:BCRYPT_MAX_LENGTH].decode("utf-8", "ignore")
-    return pwd_context.hash(truncated)
+    password_bytes = password.encode("utf-8")[:BCRYPT_MAX_LENGTH]  # truncate safely
+    return pwd_context.hash(password_bytes)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Safely verify password, truncating to 72 bytes.
     """
-    truncated = plain_password.encode("utf-8")[:BCRYPT_MAX_LENGTH].decode("utf-8", "ignore")
-    return pwd_context.verify(truncated, hashed_password)
+    password_bytes = plain_password.encode("utf-8")[:BCRYPT_MAX_LENGTH]  # truncate safely
+    return pwd_context.verify(password_bytes, hashed_password)
 
 
 # --------------------------
