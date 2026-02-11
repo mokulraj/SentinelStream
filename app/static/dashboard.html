@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SentinelStream Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f2f5;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      max-width: 600px;
+      margin: 20px auto;
+    }
+    li {
+      background: #fff;
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      font-size: 16px;
+    }
+    .fingerprint {
+      font-size: 22px;
+    }
+    .amount {
+      font-weight: bold;
+      color: #007bff;
+    }
+    .type {
+      font-style: italic;
+      color: #555;
+    }
+    .merchant {
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <h1>SentinelStream Real-Time Transactions</h1>
+  <ul id="transactions"></ul>
+
+  <script>
+    // ----------------------------
+    // Helper: get JWT from URL
+    // ----------------------------
+    function getTokenFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("token");
+    }
+
+    const token = getTokenFromURL();
+    if (!token) {
+      alert("No JWT token found in URL. Add ?token=YOUR_JWT_TOKEN");
+      throw new Error("JWT token required");
+    }
+
+    // ----------------------------
+    // Connect to SSE
+    // ----------------------------
+    const evtSource = new EventSource(`/transactions/stream?token=${token}`);
+    const list = document.getElementById("transactions");
+
+    evtSource.onmessage = function(event) {
+      const tx = JSON.parse(event.data);
+
+      const li = document.createElement("li");
+
+      li.innerHTML = `
+        <span class="fingerprint">${tx.visual_fingerprint}</span>
+        <span class="amount">${tx.amount}</span>
+        <span class="type">${tx.type}</span>
+        <span class="merchant">${tx.merchant}</span>
+      `;
+
+      list.prepend(li); // newest on top
+    };
+
+    evtSource.onerror = function() {
+      console.error("SSE connection failed");
+      evtSource.close();
+    };
+  </script>
+</body>
+</html>

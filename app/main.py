@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query, Depends, HTTPException, status
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import uvicorn
 
@@ -7,8 +8,11 @@ from app.api.routes.transactions import router as tx_router
 from app.db.session import engine
 from app.db.base import Base
 from app.db import models  # ensures models are registered
+from app.api.deps import get_current_user_from_token  # New helper to get user from query param
 
-
+# ------------------------------
+# Lifespan
+# ------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
@@ -17,6 +21,9 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
+# ------------------------------
+# App Instance
+# ------------------------------
 app = FastAPI(
     title="SentinelStream",
     lifespan=lifespan,
@@ -25,11 +32,20 @@ app = FastAPI(
     }
 )
 
+# ------------------------------
+# Mount Static Folder for Dashboard
+# ------------------------------
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# ------------------------------
 # Routers
+# ------------------------------
 app.include_router(auth_router)
 app.include_router(tx_router)
 
-
+# ------------------------------
+# Root and Health
+# ------------------------------
 @app.get("/")
 async def root():
     return {"message": "SentinelStream API Running"}
@@ -40,6 +56,9 @@ async def health():
     return {"status": "ok"}
 
 
+# ------------------------------
+# Run
+# ------------------------------
 if __name__ == "__main__":
     uvicorn.run(
         "app.main:app",
