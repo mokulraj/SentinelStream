@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <title>SentinelStream Dashboard</title>
+
+  <!-- jsPDF & html2canvas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -54,6 +58,7 @@
 <body>
   <h1>SentinelStream Transactions</h1>
   <button id="downloadPDF">Download PDF</button>
+
   <table id="transactionsTable">
     <thead>
       <tr>
@@ -84,9 +89,7 @@
 
       try {
         const res = await fetch(`/transactions/?limit=100`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
+          headers: { "Authorization": `Bearer ${token}` }
         });
         const data = await res.json();
 
@@ -123,31 +126,24 @@
     }
 
     async function downloadTransactionsPDF() {
-      const params = new URLSearchParams(window.location.search);
-      const token = params.get("token");
-      const res = await fetch(`/transactions/?limit=100`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const table = document.getElementById("transactionsTable");
+
+      // Use html2canvas to convert the table to image
+      const canvas = await html2canvas(table, { scale: 2 });
+      const imgData = canvas.toDataURL("image/png");
 
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      doc.setFontSize(14);
-      doc.text("Transaction History", 14, 20);
+      const pdf = new jsPDF("landscape", "pt", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
 
-      let y = 30;
-      data.forEach(tx => {
-        doc.setFontSize(10);
-        doc.text(
-          `${tx.transaction_uuid} | ${tx.amount} | ${tx.transaction_type} | ${tx.merchant} | ${tx.location} | Risk: ${tx.risk_score} | ${tx.status} | ${new Date(tx.created_at).toLocaleString()}`,
-          14,
-          y
-        );
-        y += 8;
-        if (y > 280) { doc.addPage(); y = 20; }
-      });
+      // Calculate image width/height to fit page
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pageWidth - 40; // margin
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-      doc.save("transactions.pdf");
+      pdf.addImage(imgData, "PNG", 20, 20, pdfWidth, pdfHeight);
+      pdf.save("transactions.pdf");
     }
 
     document.getElementById("downloadPDF").addEventListener("click", downloadTransactionsPDF);
