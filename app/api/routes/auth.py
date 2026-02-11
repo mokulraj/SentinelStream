@@ -15,30 +15,29 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 # -----------------------------
 # Register (JSON)
 # -----------------------------
-@router.post("/register", response_model=TokenResponse, status_code=201)
+@router.post("/register", status_code=201)
 async def register_user(
     payload: UserRegister,
     db: AsyncSession = Depends(get_db)
 ):
+    # Check if email exists
     result = await db.execute(select(User).where(User.email == payload.email))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    # Hash password
     hashed_pw = hash_password(payload.password)
     if isinstance(hashed_pw, bytes):
         hashed_pw = hashed_pw.decode()
 
+    # Create user
     user = User(email=payload.email, hashed_password=hashed_pw)
     db.add(user)
     await db.commit()
     await db.refresh(user)
 
-    token = create_access_token(
-        data={"user_id": user.id},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-
-    return {"access_token": token, "token_type": "bearer"}
+    # ✅ Return success message instead of token
+    return {"message": "User registered successfully"}
 
 
 # -----------------------------
