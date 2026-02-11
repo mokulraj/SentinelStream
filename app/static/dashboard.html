@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>SentinelStream Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -13,82 +14,145 @@
       text-align: center;
       color: #333;
     }
-    ul {
-      list-style: none;
-      padding: 0;
-      max-width: 600px;
+    table {
+      width: 90%;
       margin: 20px auto;
-    }
-    li {
+      border-collapse: collapse;
       background: #fff;
-      margin: 10px 0;
-      padding: 15px;
       border-radius: 8px;
+      overflow: hidden;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      display: flex;
-      justify-content: space-between;
+    }
+    th, td {
+      padding: 12px 15px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background: #007bff;
+      color: white;
+    }
+    tr.high-risk {
+      background-color: #ffcccc;
+    }
+    button {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
       font-size: 16px;
     }
-    .fingerprint {
-      font-size: 22px;
-    }
-    .amount {
-      font-weight: bold;
-      color: #007bff;
-    }
-    .type {
-      font-style: italic;
-      color: #555;
-    }
-    .merchant {
-      color: #888;
+    button:hover {
+      background: #0056b3;
     }
   </style>
 </head>
 <body>
-  <h1>SentinelStream Real-Time Transactions</h1>
-  <ul id="transactions"></ul>
+  <h1>SentinelStream Transactions</h1>
+  <button id="downloadPDF">Download PDF</button>
+  <table id="transactionsTable">
+    <thead>
+      <tr>
+        <th>UUID</th>
+        <th>Amount</th>
+        <th>Type</th>
+        <th>Merchant</th>
+        <th>Location</th>
+        <th>Risk Score</th>
+        <th>Status</th>
+        <th>Created At</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Transactions will be inserted here -->
+    </tbody>
+  </table>
 
   <script>
-    // ----------------------------
-    // Helper: get JWT from URL
-    // ----------------------------
-    function getTokenFromURL() {
+    async function loadTransactions() {
       const params = new URLSearchParams(window.location.search);
-      return params.get("token");
+      const token = params.get("token");
+
+      if (!token) {
+        alert("JWT token missing! Add ?token=YOUR_JWT_TOKEN in URL");
+        return;
+      }
+
+      try {
+        const res = await fetch(`/transactions/?limit=100`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        const data = await res.json();
+
+        const tbody = document.querySelector("#transactionsTable tbody");
+        let highRiskExists = false;
+
+        data.forEach(tx => {
+          const tr = document.createElement("tr");
+          if (tx.risk_score > 70) {
+            tr.classList.add("high-risk");
+            highRiskExists = true;
+          }
+          tr.innerHTML = `
+            <td>${tx.transaction_uuid}</td>
+            <td>${tx.amount}</td>
+            <td>${tx.transaction_type}</td>
+            <td>${tx.merchant}</td>
+            <td>${tx.location}</td>
+            <td>${tx.risk_score}</td>
+            <td>${tx.status}</td>
+            <td>${new Date(tx.created_at).toLocaleString()}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        if (highRiskExists) {
+          alert("⚠ You have high-risk transactions! Check the table highlighted in red.");
+        }
+
+      } catch (err) {
+        console.error(err);
+        alert("Failed to load transactions. Check console for details.");
+      }
     }
 
-    const token = getTokenFromURL();
-    if (!token) {
-      alert("No JWT token found in URL. Add ?token=YOUR_JWT_TOKEN");
-      throw new Error("JWT token required");
+    async function downloadTransactionsPDF() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+      const res = await fetch(`/transactions/?limit=100`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(14);
+      doc.text("Transaction History", 14, 20);
+
+      let y = 30;
+      data.forEach(tx => {
+        doc.setFontSize(10);
+        doc.text(
+          `${tx.transaction_uuid} | ${tx.amount} | ${tx.transaction_type} | ${tx.merchant} | ${tx.location} | Risk: ${tx.risk_score} | ${tx.status} | ${new Date(tx.created_at).toLocaleString()}`,
+          14,
+          y
+        );
+        y += 8;
+        if (y > 280) { doc.addPage(); y = 20; }
+      });
+
+      doc.save("transactions.pdf");
     }
 
-    // ----------------------------
-    // Connect to SSE
-    // ----------------------------
-    const evtSource = new EventSource(`/transactions/stream?token=${token}`);
-    const list = document.getElementById("transactions");
+    document.getElementById("downloadPDF").addEventListener("click", downloadTransactionsPDF);
 
-    evtSource.onmessage = function(event) {
-      const tx = JSON.parse(event.data);
-
-      const li = document.createElement("li");
-
-      li.innerHTML = `
-        <span class="fingerprint">${tx.visual_fingerprint}</span>
-        <span class="amount">${tx.amount}</span>
-        <span class="type">${tx.type}</span>
-        <span class="merchant">${tx.merchant}</span>
-      `;
-
-      list.prepend(li); // newest on top
-    };
-
-    evtSource.onerror = function() {
-      console.error("SSE connection failed");
-      evtSource.close();
-    };
+    loadTransactions();
   </script>
 </body>
 </html>
