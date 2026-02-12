@@ -36,9 +36,13 @@
       background: #007bff;
       color: white;
     }
-    tr.high-risk {
-      background-color: #ffcccc;
+
+    /* Light red for high-risk and declined */
+    tr.high-risk, tr.declined {
+      background-color: #ffd6d6; /* light red */
+      color: #000; /* black text for readability */
     }
+
     button {
       display: block;
       margin: 20px auto;
@@ -98,10 +102,16 @@
 
         data.forEach(tx => {
           const tr = document.createElement("tr");
-          if (tx.risk_score > 70) {
+
+          // Add light red row for declined or high-risk
+          if (tx.status.toLowerCase() === "declined") {
+            tr.classList.add("declined");
+            highRiskExists = true;
+          } else if (tx.risk_score > 70) {
             tr.classList.add("high-risk");
             highRiskExists = true;
           }
+
           tr.innerHTML = `
             <td>${tx.transaction_uuid}</td>
             <td>${tx.amount}</td>
@@ -116,7 +126,7 @@
         });
 
         if (highRiskExists) {
-          alert("⚠ You have high-risk transactions! Check the table highlighted in red.");
+          alert("⚠ You have high-risk or declined transactions! Check the table highlighted in red.");
         }
 
       } catch (err) {
@@ -135,9 +145,7 @@
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF("landscape", "pt", "a4");
       const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
 
-      // Calculate image width/height to fit page
       const imgProps = pdf.getImageProperties(imgData);
       const pdfWidth = pageWidth - 40; // margin
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
